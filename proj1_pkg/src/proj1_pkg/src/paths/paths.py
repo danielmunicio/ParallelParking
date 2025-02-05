@@ -28,8 +28,7 @@ class MotionPath:
         kin : :obj:`baxter_pykdl.baxter_kinematics` or :obj:`sawyer_pykdl.sawyer_kinematics`
             must be the same arm as limb
         trajectory: Trajectory object (see trajectories.py)
-        total_time : float
-            number of seconds you wish the trajectory to run for
+
         """
         self.limb = limb
         self.kin = kin
