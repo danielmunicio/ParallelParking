@@ -10,7 +10,7 @@ import time
 import numpy as np
 import signal
 
-from paths.trajectories import LinearTrajectory, CircularTrajectory, PolygonalTrajectory
+from paths.trajectories import LinearTrajectory, CircularTrajectory#, PolygonalTrajectory
 from paths.paths import MotionPath
 from controllers.controllers import (
     WorkspaceVelocityController, 
@@ -30,7 +30,7 @@ import intera_interface
 import moveit_commander
 from moveit_msgs.msg import DisplayTrajectory, RobotState
 from sawyer_pykdl import sawyer_kinematics
-
+import traceback
 
 def lookup_tag(tag_number):
     """
@@ -86,15 +86,20 @@ def get_trajectory(limb, kin, ik_solver, tag_pos, args):
     listener = tf2_ros.TransformListener(tfBuffer)
 
     try:
-        trans = tfBuffer.lookup_transform('base', 'right_hand_gripper', rospy.Time(0), rospy.Duration(10.0))
+        trans = tfBuffer.lookup_transform('base', 'stp_022412TP99883_tip_1', rospy.Time(0), rospy.Duration(10.0))
     except Exception as e:
         print(e)
+    try:
+        ar_tag = lookup_tag(11)
+        target_pos = ar_tag + np.array([0., 0., 0.3])
+    except Exception as e:
+        traceback.print_exception(e)
 
     current_position = np.array([getattr(trans.transform.translation, dim) for dim in ('x', 'y', 'z')])
     print("Current Position:", current_position)
 
     if task == 'line':
-        trajectory = LinearTrajectory()
+        trajectory = LinearTrajectory(start_position=current_position, goal_position=target_pos, total_time=10)
     elif task == 'circle':
         trajectory = CircularTrajectory()
     elif task == 'polygon':
@@ -123,13 +128,15 @@ def get_controller(controller_name, limb, kin):
         controller = WorkspaceVelocityController(limb, kin, Kp, Kv)
     elif controller_name == 'jointspace':
         # YOUR CODE HERE
-        Kp = None
-        Kv = None
+        Kp = 0.2 * np.array([0.4, 2, 1.7, 1.5, 2, 2, 3])
+        Kv = 0.01 * np.array([2, 1, 2, 0.5, 0.8, 0.8, 0.8])
         controller = PDJointVelocityController(limb, kin, Kp, Kv)
     elif controller_name == 'torque':
-        # YOUR CODE HERE
-        Kp = None
-        Kv = None
+        Kp = 1.0 * np.array([5, 30, 30, 30, 30, 130, 50])
+        Kv = 0.0 * np.array([2, 1, 2, 0.5, 0.8, 0.8, 0.8])
+        Kp = 8.0*np.array([1,1,1.5,1.5,1,1,1])
+        Kv = 5.0*np.array([2,2,1,1,0.8,0.3,0.3])
+        print("KP: ", Kp)
         controller = PDJointTorqueController(limb, kin, Kp, Kv)
     elif controller_name == 'open_loop':
         controller = FeedforwardJointVelocityController(limb, kin)

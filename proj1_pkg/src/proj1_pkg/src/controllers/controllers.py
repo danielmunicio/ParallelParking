@@ -604,21 +604,37 @@ class PDJointTorqueController(Controller):
         positions_dict = joint_array_to_dict(cur_pos, self._limb)
         velocity_dict = joint_array_to_dict(current_velocity, self._limb)
 
-        print('cur_pos: ', cur_pos.shape)
+        # print('cur_pos: ', cur_pos.shape)
         error = cur_pos - target_position[: , np.newaxis]
         error_derivative = current_velocity - target_velocity[: , np.newaxis]
 
+        inertia_mat = self._kin.inertia(positions_dict)
+        print("RANK: ", np.linalg.matrix_rank(inertia_mat))
+        coriolis_mat = self._kin.coriolis(positions_dict, velocity_dict)
+        gravity_mat = self._kin.gravity(positions_dict)
+        # print("Target Acceleration: ", target_acceleration)
+        target_acceleration = target_acceleration[: , np.newaxis]
+
         # print("ERror : ", error)
         # print("error Derivative: ", error_derivative)
-        print("error: , ", error)
+        # print("error: , ", error)
         # print("kin_coriolis: ", self._kin.coriolis(positions_dict, velocity_dict).shape)
-        torque_term_1 =  self._kin.inertia(positions_dict) @ target_acceleration
-        torque_term_2 = self._kin.coriolis(positions_dict, velocity_dict)
-        torque_term_3 = 0.06 * self._kin.gravity(positions_dict) + self._kin.inertia(positions_dict) @ (-self.Kp @ error - self.Kv @ error_derivative)
-        torque = torque_term_1.T + torque_term_2 + torque_term_3
+        # torque_term_1 =  self._kin.inertia(positions_dict) @ target_acceleration
+        # torque_term_2 = self._kin.coriolis(positions_dict, velocity_dict) @ target_velocity
+        # torque_term_3 = 0.01 * self._kin.gravity(positions_dict) + self._kin.inertia(positions_dict) @ (-self.Kp @ error - self.Kv @ error_derivative)
+        # torque = torque_term_1.T + torque_term_2 + torque_term_3
 
-        # print("T1: ", torque_term_1.shape)
-        # print("T2: ", torque_term_2.shape)
-        # print("T3: ", torque_term_3.shape)
+        torque_term_1 = inertia_mat @ (target_acceleration) - self.Kv @ error_derivative - self.Kp @ error                          
+        torque_term_2 = coriolis_mat #* current_velocity
+        torque_term_3 = 0.01 * gravity_mat
+        torque = torque_term_1 + torque_term_2 + torque_term_3
+        print(inertia_mat.shape)
+        print(coriolis_mat.shape)
+        print(gravity_mat.shape)
+        print(error.shape, error_derivative.shape)
+        print("T1: ", torque_term_1.shape)
+        print("T2: ", torque_term_2.shape)
+        print("T3: ", torque_term_3.shape)
         control_input = torque
-        self._limb.set_joint_torques(joint_array_to_dict(control_input, self._limb))
+        print("INPUT: ", torque)
+        print("return value?", self._limb.set_joint_torques(joint_array_to_dict(control_input, self._limb)))
