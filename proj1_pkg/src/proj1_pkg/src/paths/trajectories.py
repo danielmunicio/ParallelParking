@@ -255,18 +255,12 @@ class CircularTrajectory(Trajectory):
             desired configuration in workspace coordinates of the end effector
         """
         if time <= self.total_time / 2.0:
-            # TODO: calculate the ANGLE of the end effector at time t, 
-            # For the first half of the trajectory, maintain a constant acceleration
-            
-
             theta = time**2 * self.angular_acceleration / 2
         else:
-            # TODO: Calculate the ANGLE of the end effector at time t, 
-            # For the second half of the trajectory, maintain a constant acceleration
-            # Hint: Calculate the remaining angle to the goal position. 
+            theta = 0.5 * self.angular_acceleration * (self.total_time / 2) ** 2
+            theta += self.angular_v_max*(time - self.total_time / 2.0) - 0.5 * self.angular_acceleration * (time - self.total_time / 2.0) ** 2
 
-
-            theta = (self.angular_acceleration*(self.total_time/2)**2)/2 + (time - self.total_time/2) * (self.angular_acceleration*(self.total_time/2) - self.angular_acceleration*(time-self.total_time/2)/2)
+            #theta = (self.angular_acceleration*(self.total_time/2)**2)/2 + (time - self.total_time/2) * (self.angular_acceleration*(self.total_time/2) - self.angular_acceleration*(time-self.total_time/2)/2)
         pos_d = np.ndarray.flatten(self.center_position + self.radius * np.array([np.cos(theta), np.sin(theta), 0]))
         return np.hstack((pos_d, self.desired_orientation))
 
@@ -290,34 +284,28 @@ class CircularTrajectory(Trajectory):
             desired body-frame velocity of the end effector
         """
         if time <= self.total_time / 2.0:
-            # First half of the trajectory: acceleration phase
-            # Calculate the angular position (theta) using constant angular acceleration
             theta = time**2 * self.angular_acceleration / 2
-
-            # Angular velocity (theta_dot) during acceleration
             theta_dot = time * self.angular_acceleration
 
         else:
-            # Second half of the trajectory: deceleration phase
-            # Calculate the time elapsed after the halfway point
             time_after = time - (self.total_time / 2)
-
-            # Calculate the angular position (theta) during deceleration
-            # First, calculate the angle reached at the halfway point (constant acceleration phase)
             theta_acceleration = (self.angular_acceleration * (self.total_time / 2)**2) / 2
 
-            # Then, calculate the remaining angle to cover during the deceleration phase
-            theta_deceleration = (time_after * 
-                (self.angular_acceleration * (self.total_time / 2) - 
-                self.angular_acceleration * time_after / 2))
+            # # Then, calculate the remaining angle to cover during the deceleration phase
+            # theta_deceleration = (time_after * 
+            #     (self.angular_acceleration * (self.total_time / 2) - 
+            #     self.angular_acceleration * time_after / 2))
 
-            # Total angular position (theta) is the sum of the two phases
-            theta = theta_acceleration + theta_deceleration
+            # # Total angular position (theta) is the sum of the two phases
+            # theta = theta_acceleration + theta_deceleration
 
-            # Angular velocity (theta_dot) during deceleration
-            theta_dot = (self.angular_acceleration * (self.total_time / 2) - 
-                         self.angular_acceleration * time_after)
+            # # Angular velocity (theta_dot) during deceleration
+            # theta_dot = (self.angular_acceleration * (self.total_time / 2) - 
+            #              self.angular_acceleration * time_after)
 
+            theta = 0.5 * self.angular_acceleration * (self.total_time / 2) ** 2
+            theta += self.angular_v_max*(time - self.total_time / 2.0) - 0.5 * self.angular_acceleration * (time - self.total_time / 2.0) ** 2
+            theta_dot = self.angular_v_max - self.angular_acceleration * (time - self.total_time / 2.0)
         # Compute the linear velocity in the direction of motion, considering circular trajectory
         vel_d = np.ndarray.flatten(self.radius * theta_dot * np.array([-np.sin(theta), np.cos(theta), 0]))
 

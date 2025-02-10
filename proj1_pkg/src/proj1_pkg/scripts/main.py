@@ -86,12 +86,14 @@ def get_trajectory(limb, kin, ik_solver, tag_pos, args):
     listener = tf2_ros.TransformListener(tfBuffer)
 
     try:
-        trans = tfBuffer.lookup_transform('base', 'stp_022412TP99883_tip_1', rospy.Time(0), rospy.Duration(10.0))
+        print("looking for transform")
+        trans = tfBuffer.lookup_transform('base', 'right_gripper_tip', rospy.Time(0), rospy.Duration(10.0))
     except Exception as e:
         print(e)
     try:
+        print("Looking for AR Tag")
         ar_tag = lookup_tag(11)
-        target_pos = ar_tag + np.array([0., 0., 0.3])
+        target_pos = ar_tag + np.array([0., 0., 0.5])
     except Exception as e:
         traceback.print_exception(e)
 
@@ -101,7 +103,7 @@ def get_trajectory(limb, kin, ik_solver, tag_pos, args):
     if task == 'line':
         trajectory = LinearTrajectory(start_position=current_position, goal_position=target_pos, total_time=10)
     elif task == 'circle':
-        trajectory = CircularTrajectory()
+        trajectory = CircularTrajectory(center_position = target_pos, radius=0.1, total_time=10)
     elif task == 'polygon':
         trajectory = PolygonalTrajectory()
     else:
@@ -217,7 +219,8 @@ def main():
         
         while not rospy.is_shutdown():
             try:
-                # limb.move_to_joint_positions(joint_array_to_dict(start, limb), timeout=7.0, threshold=0.0001) # ONLY FOR EMERGENCIES!!!
+                # limb.move_to_joint_positions(joint_array_to_dict(start, limb), timeout=7.0, threshold=0.0001) # ONLY FOR EMERGENCIES!!!\
+                print("executing plan")
                 plan = planner.plan_to_joint_pos(start)
                 planner.execute_plan(plan[1])
                 break
@@ -251,15 +254,18 @@ def main():
         except KeyboardInterrupt:
             sys.exit()
         # execute the path using your own controller.
-        done = controller.execute_path(
-            robot_trajectory, 
-            rate=args.rate, 
-            timeout=args.timeout, 
-            log=args.log
-        )
-        if not done:
-            print('Failed to move to position')
-            sys.exit(0)
+        while not rospy.is_shutdown():
+            tag_pos = [lookup_tag(marker) for marker in args.ar_marker]
+            robot_trajectory = get_trajectory(limb, kin, ik_solver, tag_pos, args)
+            done = controller.execute_path(
+                robot_trajectory, 
+                rate=args.rate, 
+                timeout=args.timeout, 
+                log=args.log
+            )
+            if not done:
+                print('Failed to move to position')
+                sys.exit(0)
 
 
 if __name__ == "__main__":

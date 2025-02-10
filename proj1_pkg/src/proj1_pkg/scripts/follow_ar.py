@@ -105,10 +105,10 @@ if __name__ == "__main__":
     parser.add_argument('-ar_marker', '-ar', type=float, default=1, help=
         'Which AR marker to use.  Default: 1'
     )
-    parser.add_argument('-controller_name', '-c', type=str, default='workspace', 
+    parser.add_argument('-controller_name', '-c', type=str, default='jointspace', 
         help='Options: workspace, jointspace, or torque.  Default: workspace'
     )
-    parser.add_argument('-arm', '-a', type=str, default='left', help=
+    parser.add_argument('-arm', '-a', type=str, default='right', help=
         'Options: left, right.  Default: left'
     )
     parser.add_argument('-rate', type=int, default=200, help="""

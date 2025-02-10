@@ -17,6 +17,7 @@ from paths.paths import MotionPath
 # Lab imports
 from utils.utils import *
 from trac_ik_python.trac_ik import IK
+from moveit_msgs.msg import DisplayTrajectory, RobotState
 
 # ROS imports
 try:
@@ -414,35 +415,110 @@ class Controller:
         bool
             whether the controller completes the path or not
         """
+        def lookup_tag(tag_number):
+            """
+            Given an AR tag number, this returns the position of the AR tag in the robot's base frame.
+            You can use either this function or try starting the scripts/tag_pub.py script.  More info
+            about that script is in that file.  
+
+            Parameters
+            ----------
+            tag_number : int
+
+            Returns
+            -------
+            3x' :obj:`numpy.ndarray`
+                tag position
+            """
+            to_frame = 'ar_marker_{}'.format(tag_number)
+
+            try:
+                trans = tfBuffer.lookup_transform('base', to_frame, rospy.Time(0), rospy.Duration(10.0))
+            except Exception as e:
+                print(e)
+                print("Retrying ...")
+
+            tag_pos = [getattr(trans.transform.translation, dim) for dim in ('x', 'y', 'z')]
+            return np.array(tag_pos)
+
+        def get_curr_pos():
+            trans = tfBuffer.lookup_transform('base', f'right_gripper_tip', rospy.Time(0), rospy.Duration(10.0))
+            target_pos = np.array([getattr(trans.transform.translation, dim) for dim in ('x', 'y', 'z')])
+            return target_pos
+
+
         tfBuffer = tf2_ros.Buffer()
         tfListener = tf2_ros.TransformListener(tfBuffer)
-        trans2 = tfBuffer.lookup_transform('base', 'stp_022412TP99883_tip_1', rospy.Time(0), rospy.Duration(1.2))
+        ik_solver = IK("base", 'right_gripper_tip')
+        
+        start_t = rospy.Time.now()
+        r = rospy.Rate(rate)
+        #trajectory = LinearTrajectory(start_position=current_position, goal_position=target_pos, total_time=total_time)
+        total_time = 6.5
+        target_pos = lookup_tag(tag)
+        curr_position = get_curr_pos()
+        temp_target_pos = target_pos
+        temp_target_pos[2] = curr_position[2]
+        trajectory = LinearTrajectory(start_position=curr_position, goal_position=temp_target_pos, total_time=total_time)
+        path = MotionPath(self._limb, self._kin, ik_solver, trajectory).to_robot_trajectory()
+        max_index = len(path.joint_trajectory.points)-1
+        current_index = 0
+        
 
-        try:
-            trans = tfBuffer.lookup_transform('base', f'ar_marker_{tag}', rospy.Time(0), rospy.Duration(10.0))
-        except Exception as e:
-            print(e)
-            print("Retrying ...")
+        while not rospy.is_shutdown():
+            # Find the time from start
+            t = (rospy.Time.now() - start_t).to_sec()
 
-        target_pos = np.array([getattr(trans.transform.translation, dim) for dim in ('x', 'y', 'z')])
-        current_position = np.array([getattr(trans2.transform.translation, dim) for dim in ('x', 'y', 'z')])
-        target_pos[2] += 0.2
-        total_time = 9
-        #MotionPath
-        #         Parameters
-        # ----------
-        # limb : :obj:`baxter_interface.Limb` or :obj:`intera_interface.Limb`
-        # kin : :obj:`baxter_pykdl.baxter_kinematics` or :obj:`sawyer_pykdl.sawyer_kinematics`
-        #     must be the same arm as limb
-        # trajectory: Trajectory object (see trajectories.py)
-        # total_time : float
-        #     number of seconds you wish the trajectory to run for
-        #self, limb, kin, ik_solver, trajectory):
-        trajectory = LinearTrajectory(start_position=current_position, goal_position=target_pos, total_time=total_time)
-        ik_solver = IK("base", 'stp_022412TP99883_tip_1')
-        path = MotionPath(self._limb, self._kin, ik_solver, trajectory)
-        # path.to_robot_trajectory()
-        self.execute_path(path.to_robot_trajectory(), rate = rate)
+            # If the controller has timed out, stop moving and return false
+            if timeout is not None and t >= timeout:
+                # Set velocities to zero
+                self.stop_moving()
+                return False
+
+            current_position = get_joint_positions(self._limb)
+            current_velocity = get_joint_velocities(self._limb)
+            new_target_pos = lookup_tag(tag)
+            #print(f"current_target_pos: {target_pos} , new_target_pos: {new_target_pos}")
+
+            if (not any(np.isclose(target_pos[0:2], new_target_pos[0:2], rtol = 0.02)) and np.linalg.norm([target_pos[0:2], new_target_pos[0:2]]) < 1.5):
+                start_t = rospy.Time.now()
+                t = (rospy.Time.now() - start_t).to_sec()
+                target_pos = new_target_pos
+                curr_position = get_curr_pos()
+                temp_target_pos = target_pos
+                temp_target_pos[2] = curr_position[2]
+                old_trajectory = trajectory
+                trajectory = LinearTrajectory(start_position=curr_position, goal_position=temp_target_pos, total_time=total_time)
+                # print("OLD TRAJECTORY: ", old_trajectory)
+                # print("NEW TRAJECTORY: ", trajectory)
+                path = MotionPath(self._limb, self._kin, ik_solver, trajectory).to_robot_trajectory()
+                current_index = 0
+                max_index = len(path.joint_trajectory.points)-1
+                print("Switching Position")
+                #print(f"curr_pos: {current_position}, target_pos: {target_pos}")
+
+            # Get the desired position, velocity, and effort
+            (
+                target_position, 
+                target_velocity, 
+                target_acceleration, 
+                current_index
+            ) = self.interpolate_path(path, t, current_index)
+
+            # Run controller
+            self.step_control(target_position, target_velocity, target_acceleration)
+            #self.execute_path(path.to_robot_trajectory(), rate = rate)
+            # Sleep for a bit (to let robot move)
+            r.sleep()
+
+            if current_index >= max_index:
+                self.stop_moving()
+                break
+        # trajectory = LinearTrajectory(start_position=current_position, goal_position=target_pos, total_time=total_time)
+        # ik_solver = IK("base", 'right_gripper_tip')
+        # path = MotionPath(self._limb, self._kin, ik_solver, trajectory)
+        # # path.to_robot_trajectory()
+        # self.execute_path(path.to_robot_trajectory(), rate = rate)
 
 
 class FeedforwardJointVelocityController(Controller):
@@ -598,6 +674,7 @@ class PDJointTorqueController(Controller):
         target_velocity: 7x' :obj:`numpy.ndarray` of desired velocities
         target_acceleration: 7x' :obj:`numpy.ndarray` of desired accelerations
         """
+        #print("MADE IT TO STEP CONTROL")
         cur_pos = get_joint_positions(self._limb)[: , np.newaxis]
         current_velocity = get_joint_velocities(self._limb)[: , np.newaxis]
 
@@ -609,7 +686,7 @@ class PDJointTorqueController(Controller):
         error_derivative = current_velocity - target_velocity[: , np.newaxis]
 
         inertia_mat = self._kin.inertia(positions_dict)
-        print("RANK: ", np.linalg.matrix_rank(inertia_mat))
+        #print("RANK: ", np.linalg.matrix_rank(inertia_mat))
         coriolis_mat = self._kin.coriolis(positions_dict, velocity_dict)
         gravity_mat = self._kin.gravity(positions_dict)
         # print("Target Acceleration: ", target_acceleration)
@@ -628,13 +705,13 @@ class PDJointTorqueController(Controller):
         torque_term_2 = coriolis_mat #* current_velocity
         torque_term_3 = 0.01 * gravity_mat
         torque = torque_term_1 + torque_term_2 + torque_term_3
-        print(inertia_mat.shape)
-        print(coriolis_mat.shape)
-        print(gravity_mat.shape)
-        print(error.shape, error_derivative.shape)
-        print("T1: ", torque_term_1.shape)
-        print("T2: ", torque_term_2.shape)
-        print("T3: ", torque_term_3.shape)
+        # print(inertia_mat.shape)
+        # print(coriolis_mat.shape)
+        # print(gravity_mat.shape)
+        # print(error.shape, error_derivative.shape)
+        # print("T1: ", torque_term_1.shape)
+        # print("T2: ", torque_term_2.shape)
+        # print("T3: ", torque_term_3.shape)
         control_input = torque
-        print("INPUT: ", torque)
-        print("return value?", self._limb.set_joint_torques(joint_array_to_dict(control_input, self._limb)))
+        # print("INPUT: ", torque)
+        # print("return value?", self._limb.set_joint_torques(joint_array_to_dict(control_input, self._limb)))
