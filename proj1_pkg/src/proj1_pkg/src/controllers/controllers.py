@@ -241,14 +241,14 @@ class Controller:
                 plt.plot(times, actual_positions[:,joint], label='Actual')
                 plt.plot(times, target_positions[:,joint], label='Desired')
                 plt.xlabel("Time (t)")
-                plt.ylabel("Joint " + str(joint) + " Position Error")
+                plt.ylabel("J" + str(joint) + " Pos. Error")
                 plt.legend()
 
                 plt.subplot(joint_num,2,2*joint+2)
                 plt.plot(times, actual_velocities[:,joint], label='Actual')
                 plt.plot(times, target_velocities[:,joint], label='Desired')
                 plt.xlabel("Time (t)")
-                plt.ylabel("Joint " + str(joint) + " Velocity Error")
+                plt.ylabel("J" + str(joint) + " Vel. Error")
                 plt.legend()
             print("Close the plot window to continue")
             plt.show()
@@ -703,7 +703,7 @@ class PDJointTorqueController(Controller):
 
         torque_term_1 = inertia_mat @ (target_acceleration) - self.Kv @ error_derivative - self.Kp @ error                          
         torque_term_2 = coriolis_mat #* current_velocity
-        torque_term_3 = 0.01 * gravity_mat
+        torque_term_3 = 0.15 * gravity_mat
         torque = torque_term_1 + torque_term_2 + torque_term_3
         # print(inertia_mat.shape)
         # print(coriolis_mat.shape)
@@ -714,4 +714,4 @@ class PDJointTorqueController(Controller):
         # print("T3: ", torque_term_3.shape)
         control_input = torque
         # print("INPUT: ", torque)
-        # print("return value?", self._limb.set_joint_torques(joint_array_to_dict(control_input, self._limb)))
+        print("return value?", self._limb.set_joint_torques(joint_array_to_dict(control_input, self._limb)))

@@ -87,15 +87,15 @@ def get_trajectory(limb, kin, ik_solver, tag_pos, args):
 
     try:
         print("looking for transform")
-        trans = tfBuffer.lookup_transform('base', 'right_gripper_tip', rospy.Time(0), rospy.Duration(10.0))
+        trans = tfBuffer.lookup_transform('base', 'stp_022412TP99883_tip', rospy.Time(0), rospy.Duration(10.0))
     except Exception as e:
         print(e)
     try:
         print("Looking for AR Tag")
-        ar_tag = lookup_tag(11)
+        ar_tag = lookup_tag(13)
         target_pos = ar_tag + np.array([0., 0., 0.5])
     except Exception as e:
-        traceback.print_exception(e)
+        traceback.print_exc()
 
     current_position = np.array([getattr(trans.transform.translation, dim) for dim in ('x', 'y', 'z')])
     print("Current Position:", current_position)
@@ -136,7 +136,7 @@ def get_controller(controller_name, limb, kin):
     elif controller_name == 'torque':
         Kp = 1.0 * np.array([5, 30, 30, 30, 30, 130, 50])
         Kv = 0.0 * np.array([2, 1, 2, 0.5, 0.8, 0.8, 0.8])
-        Kp = 8.0*np.array([1,1,1.5,1.5,1,1,1])
+        Kp = 15.0*np.array([1*3,1*3,1.5*3,1.5,1*3,1,1])
         Kv = 5.0*np.array([2,2,1,1,0.8,0.3,0.3])
         print("KP: ", Kp)
         controller = PDJointTorqueController(limb, kin, Kp, Kv)
