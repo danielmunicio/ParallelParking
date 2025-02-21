@@ -260,11 +260,18 @@ class BicycleConfigurationSpace(ConfigurationSpace):
         self.input_low_lims = input_low_lims
         self.input_high_lims = input_high_lims
 
+        self.motion_primitives = np.vstack([
+            [0.2, 0.0], # Straight ahead
+            [0.2, 0.2], # Left Turn
+            [0.2, 0.5], # Hard Left Turn 
+            [0.2, -0.2],# Right turn
+            [0.2, -0.5], # Hard right turn
+        ])
     def distance(self, c1, c2):
         """
         c1 and c2 should be numpy.ndarrays of size (4,)
         """
-        pass
+        return np.linalg.norm(c1 - c2)
 
     def sample_config(self, *args):
         """
@@ -275,14 +282,20 @@ class BicycleConfigurationSpace(ConfigurationSpace):
         RRT implementation passes in the goal as an additional argument,
         which can be used to implement a goal-biasing heuristic.
         """
-        pass
+        return np.random.uniform(self.low_lims, self.high_lims).reshape((self.dim,))
 
     def check_collision(self, c):
         """
         Returns true if a configuration c is in collision
         c should be a numpy.ndarray of size (4,)
         """
-        pass
+        collision = False
+        for obstacle in self.obstacles:
+            squared_dist_between_centers = (obstacle[0] - c[0]) ** 2 + (obstacle[1] - c[1]) ** 2
+            collision = squared_dist_between_centers > (obstacle[2] + c[2]) ** 2
+            if collision == True:
+                return collision
+        return collision
 
     def check_path_collision(self, path):
         """
@@ -293,7 +306,13 @@ class BicycleConfigurationSpace(ConfigurationSpace):
         You should also ensure that the path does not exceed any state bounds,
         and the open loop inputs don't exceed input bounds.
         """
-        pass
+        c1 = path.start_position()
+        c2 = path.end_position()
+        print(c1, c2)
+        for obstacle in self.obstacles:
+            if self.does_intersect_circle_segment(obstacle[:2], obstacle[2], c1[:2], c2[:2]):
+                return True
+        return False
 
     def local_plan(self, c1, c2, dt=0.01):
         """
@@ -331,4 +350,66 @@ class BicycleConfigurationSpace(ConfigurationSpace):
 
         This should return a cofiguration_space.Plan object.
         """
-        pass
+
+        u, q = self.check_motion_primitives(dt, c1, c2)
+        print("U: ", u)
+        print("Q: ", q)
+        plan = Plan(np.array([0, 0.01]), np.array([c1, q]), np.tile(u, (2, 1)), dt=0.01)
+        return plan
+
+    def check_motion_primitives(self, dt, c1, c2):
+        # I got motion cuh
+        dist_array = np.array([])
+        #poses = np.array([])
+        poses = []
+        for motion in self.motion_primitives:
+            phi = c1[3] + motion[1] * dt
+            theta_dot = (1 / self.robot_length) * np.tan(phi) 
+            theta = theta_dot * dt + c1[2]
+            x = c1[0] + motion[0] * np.cos(theta)
+            y = c1[1] + motion[1] * np.sin(theta)
+
+            new_pos = np.array([x, y, theta, phi])
+            dist = self.distance(new_pos, c2)
+            dist_array = np.append(dist_array, dist)
+            poses.append(new_pos)
+        final_motion_idx = np.argmin(dist_array)
+        print("POSES: ", poses)
+        return self.motion_primitives[final_motion_idx], poses[final_motion_idx]
+
+
+    def does_intersect_circle_segment(self, circle_center, radius, p1, p2):
+        # Circle center and radius
+        x_c, y_c = circle_center
+        r = radius
+    
+        # Line segment endpoints
+        x1, y1 = p1
+        x2, y2 = p2
+    
+        # Vector for the line segment
+        segment_vector = np.array([x2 - x1, y2 - y1])
+    
+        # Vector from the circle center to the start of the line segment
+        to_center_vector = np.array([x_c - x1, y_c - y1])
+    
+        # Find the projection of the circle's center onto the line defined by the segment
+        segment_length_squared = np.dot(segment_vector, segment_vector)
+        if segment_length_squared == 0:  # If the segment is degenerate (start == end)
+            # Check distance to the single point
+            return np.linalg.norm(np.array([x_c - x1, y_c - y1])) <= r
+    
+        # Dot product to get the scalar projection factor t
+        t = np.dot(to_center_vector, segment_vector) / segment_length_squared
+    
+        # Clamp t to the range [0, 1] to ensure we're on the segment
+        t = max(0, min(1, t))
+    
+        # Find the closest point on the segment
+        closest_point = np.array([x1, y1]) + t * segment_vector
+    
+        # Calculate the distance from the closest point to the circle center
+        distance_to_center = np.linalg.norm(closest_point - np.array([x_c, y_c]))
+    
+        # If the distance to the closest point is less than or equal to the radius, return True
+        return distance_to_center <= r

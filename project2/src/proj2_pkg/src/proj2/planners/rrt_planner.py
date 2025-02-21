@@ -10,7 +10,7 @@ import rospy
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import defaultdict
-from .configuration_space import FreeEuclideanSpace, BicycleConfigurationSpace, Plan
+from configuration_space import FreeEuclideanSpace, BicycleConfigurationSpace, Plan
 
 class RRTGraph(object):
 
@@ -135,6 +135,9 @@ def main():
                                         [u1_max, u2_max],
                                         obstacles,
                                         0.15)
+    # dim = 4
+    # config = FreeEuclideanSpace(dim, xy_low + [-1000, -phi_max],
+    #                                     xy_high + [1000, phi_max])
 
     planner = RRTPlanner(config, max_iter=10000, expand_dist=0.8)
     plan = planner.plan_to_pose(start, goal)
