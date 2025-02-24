@@ -3,16 +3,16 @@
 Starter code for EECS C106B Spring 2022 Project 2.
 Author: Valmik Prabhu, Amay Saxena
 
-Implements the optimization-based path planner.
+Implements the self.optimization-based path planner.
 """
 
 import scipy as sp
 import scipy.io as spio
 import numpy as np
 import matplotlib.pyplot as plt
-
-from .configuration_space import BicycleConfigurationSpace, Plan, expanded_obstacles
-from .optimization_planner_casadi import plan_to_pose
+import casadi as ca
+from configuration_space import BicycleConfigurationSpace, Plan, expanded_obstacles
+#from self.optimization_planner_casadi import plan_to_pose
 
 class OptimizationPlanner(object):
     def __init__(self, config_space):
@@ -20,10 +20,72 @@ class OptimizationPlanner(object):
 
         self.input_low_lims = self.config_space.input_low_lims
         self.input_high_lims = self.config_space.input_high_lims
+        self.robot_length = self.config_space.robot_length
+
+        self.opti = ca.Opti()
+        self.q = ca.SX.sym('x', 4)
+        self.u = ca.SX.sym('u', 2)
+        self.t = ca.SX.sym('t')
+        self.x_low_lims = [-5, -1, -1000, -0.6]
+        self.x_high_lims = [10, 10, 1000, 0.6]
+        self.dynamics = self.q + self.t * ca.vertcat(ca.cos(self.q[2]) * self.u[0], 
+         ca.sin(self.q[2]) * self.u[0],
+         (1/self.robot_length) * ca.tan(self.q[3]) * self.u[0],
+         self.u[1])
+    
+        self.thefunkymonkey = ca.Function('thefunkymonkey', [self.q, self.u, self.t], [self.dynamics])
+
+    def reid_big_function(self, start, goal, N):
+        X = []
+        T = []
+        U = []
+        X0 = self.opti.parameter(4)
+        Xf = self.opti.parameter(4)
+        self.opti.set_value(X0, start.flatten().tolist())
+        self.opti.set_value(Xf, goal.flatten().tolist())
+
+        for i in range(N):
+            X.append(self.opti.variable(4))
+            T.append(self.opti.variable())
+            U.append(self.opti.variable(2))
+
+        for k in range(N):
+            if k != N-1:
+                self.opti.subject_to(X[k+1] == self.thefunkymonkey(X[k], U[k], T[k] / N))
+                self.opti.subject_to(T[k+1] == T[k])
+
+            if k == 0:
+                self.opti.subject_to(X[0] == X0)
+            if k == N-1:
+                self.opti.subject_to(X[N-1] == Xf)
+
+            self.opti.subject_to(U[k] > self.input_low_lims)
+            self.opti.subject_to(U[k] < self.input_high_lims)
+            self.opti.subject_to(X[k] > self.x_low_lims)
+            self.opti.subject_to(X[k] > self.x_high_lims)
+            
+            for obs in self.config_space.obstacles:
+                self.opti.subject_to(ca.sumsqr(X[k][0:2] - obs[0:2]) >= obs[2] ** 2)
+
+        X.append(self.opti.variable(4))  
+        T.append(self.opti.variable())
+
+        X = ca.hcat(X)
+        T = ca.hcat(T)
+
+        self.options = {}
+        self.options["structure_detection"] = "auto"
+        self.options["debug"] = True
+
+        self.opti.minimize(ca.sum2(T))
+        self.opti.solver("fatrop", self.options)
+
+        sol = self.opti.solve()
+        print(sol.value(X).T)
 
     def plan_to_pose(self, start, goal, dt=0.01, N=1000):
         """
-            Uses your optimization based path planning algorithm to plan from the 
+            Uses your self.optimization based path planning algorithm to plan from the 
             start configuration to the goal configuration.
 
             Args:
@@ -35,7 +97,7 @@ class OptimizationPlanner(object):
                    to goal
         """
 
-        print("======= Planning with OptimizationPlanner =======")
+        print("======= Planning with self.optimizationPlanner =======")
 
         # Expand obstacles to account for the radius of the robot.
         with expanded_obstacles(self.config_space.obstacles, self.config_space.robot_radius + 0.05):
@@ -114,8 +176,9 @@ def main():
                                         0.15)
 
     planner = OptimizationPlanner(config)
-    plan = planner.plan_to_pose(start, goal)
-    planner.plot_execution()
+    planner.reid_big_function(start, goal, N=1000)
+    #plan = planner.plan_to_pose(start, goal)
+    #planner.plot_execution()
 
 if __name__ == '__main__':
     main()

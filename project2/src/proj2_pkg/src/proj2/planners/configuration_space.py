@@ -262,10 +262,10 @@ class BicycleConfigurationSpace(ConfigurationSpace):
 
         self.motion_primitives = np.vstack([
             [0.2, 0.0], # Straight ahead
-            [0.2, 0.2], # Left Turn
-            [0.2, 0.5], # Hard Left Turn 
-            [0.2, -0.2],# Right turn
-            [0.2, -0.5], # Hard right turn
+            #[0.2, 0.2], # Left Turn
+            [0.2, 0.1], # Hard Left Turn 
+            #[0.2, -0.2],# Right turn
+            [0.2, -0.1], # Hard right turn
         ])
     def distance(self, c1, c2):
         """
