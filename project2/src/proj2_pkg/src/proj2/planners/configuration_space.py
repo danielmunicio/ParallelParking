@@ -261,17 +261,33 @@ class BicycleConfigurationSpace(ConfigurationSpace):
         self.input_high_lims = input_high_lims
 
         self.motion_primitives = np.vstack([
+<<<<<<< HEAD
             [0.2, 0.0], # Straight ahead
             #[0.2, 0.2], # Left Turn
             [0.2, 0.1], # Hard Left Turn 
             #[0.2, -0.2],# Right turn
             [0.2, -0.1], # Hard right turn
+=======
+            [0.1, 0.0], # Straight ahead
+            [0.1, 0.2], # Left Turn
+            [0.1, 0.5], # Hard Left Turn 
+            [0.1, 0.1],
+            [0.1, 0.05],
+            [0.1, 0.25], 
+            [0.1, 0.3],
+            [0.1, 0.35],
+            [0.1, 0.4],
+>>>>>>> 30fe8c30a790784464776f97eb6d6455bc7ff836
         ])
+
+        self.motion_primitives = np.vstack([self.motion_primitives, self.motion_primitives * [2, 1]])
+        self.motion_primitives = np.vstack([self.motion_primitives, self.motion_primitives * [1, 2]])
+        self.motion_primitives = np.vstack([self.motion_primitives, self.motion_primitives * [1, -1]])
     def distance(self, c1, c2):
         """
         c1 and c2 should be numpy.ndarrays of size (4,)
         """
-        return np.linalg.norm(c1 - c2)
+        return (np.linalg.norm(c1[0:2] - c2[0:2]) + (np.sin((c1[3] - c2[3]) / 2) ** 2))
 
     def sample_config(self, *args):
         """
@@ -354,7 +370,7 @@ class BicycleConfigurationSpace(ConfigurationSpace):
         u, q = self.check_motion_primitives(dt, c1, c2)
         print("U: ", u)
         print("Q: ", q)
-        plan = Plan(np.array([0, 0.01]), np.array([c1, q]), np.tile(u, (2, 1)), dt=0.01)
+        plan = Plan(np.array([0, 0.01]), np.array([c1, q]), np.tile(u, (2, 1)), dt=dt)
         return plan
 
     def check_motion_primitives(self, dt, c1, c2):
@@ -374,7 +390,6 @@ class BicycleConfigurationSpace(ConfigurationSpace):
             dist_array = np.append(dist_array, dist)
             poses.append(new_pos)
         final_motion_idx = np.argmin(dist_array)
-        print("POSES: ", poses)
         return self.motion_primitives[final_motion_idx], poses[final_motion_idx]
 
 
