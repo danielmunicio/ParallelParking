@@ -26,16 +26,20 @@ class OptimizationPlanner(object):
         self.q = ca.SX.sym('x', 4)
         self.u = ca.SX.sym('u', 2)
         self.t = ca.SX.sym('t')
-        self.x_low_lims = [-5, -1, -1000, -0.6]
-        self.x_high_lims = [10, 10, 1000, 0.6]
-        self.dynamics = self.q + self.t * ca.vertcat(ca.cos(self.q[2]) * self.u[0], 
-         ca.sin(self.q[2]) * self.u[0],
-         (1/self.robot_length) * ca.tan(self.q[3]) * self.u[0],
-         self.u[1])
+        self.x_low_lims = self.config_space.low_lims
+        self.x_high_lims = self.config_space.high_lims
+        self.dynamics = self.q + self.t * ca.vertcat(
+            ca.cos(self.q[2]) * self.u[0], 
+            ca.sin(self.q[2]) * self.u[0],
+            (1/self.robot_length) * ca.tan(self.q[3]) * self.u[0],
+            self.u[1]
+        )
     
         self.thefunkymonkey = ca.Function('thefunkymonkey', [self.q, self.u, self.t], [self.dynamics])
 
     def reid_big_function(self, start, goal, N):
+        fix_angle = ca.Function('fix_angle', [self.q], [ca.vertcat(self.q[0], self.q[1], ca.sin(self.q[2]/2), self.q[3])])
+
         X = []
         T = []
         U = []
@@ -48,40 +52,49 @@ class OptimizationPlanner(object):
             X.append(self.opti.variable(4))
             T.append(self.opti.variable())
             U.append(self.opti.variable(2))
-
+        X.append(self.opti.variable(4))
+        T.append(self.opti.variable())
+        # cost = ca.sumsqr(fix_angle(X[-1] - Xf))
+        # cost = 0
         for k in range(N):
-            if k != N-1:
-                self.opti.subject_to(X[k+1] == self.thefunkymonkey(X[k], U[k], T[k] / N))
-                self.opti.subject_to(T[k+1] == T[k])
+            self.opti.subject_to(X[k+1] == self.thefunkymonkey(X[k], U[k], T[k] / N))
+            self.opti.subject_to(T[k+1] == T[k])
 
             if k == 0:
-                self.opti.subject_to(X[0] == X0)
+                self.opti.subject_to(fix_angle(X[0]-X0)==ca.DM([0.0]*4))
             if k == N-1:
-                self.opti.subject_to(X[N-1] == Xf)
-
-            self.opti.subject_to(U[k] > self.input_low_lims)
-            self.opti.subject_to(U[k] < self.input_high_lims)
-            self.opti.subject_to(X[k] > self.x_low_lims)
-            self.opti.subject_to(X[k] > self.x_high_lims)
+                self.opti.subject_to(fix_angle(X[N-1]-Xf) == ca.DM([0.0]*4))
+            # print(self.input_low_lims, self.input_high_lims, self.x_low_lims, self.x_high_lims)
+            self.opti.subject_to(U[k] >= ca.DM(self.input_low_lims))
+            self.opti.subject_to(U[k] <= ca.DM(self.input_high_lims))
+            self.opti.subject_to(T[k] >= 0.0)
+            self.opti.subject_to(X[k] >= ca.DM(self.x_low_lims))
+            self.opti.subject_to(X[k] <= ca.DM(self.x_high_lims))
             
             for obs in self.config_space.obstacles:
                 self.opti.subject_to(ca.sumsqr(X[k][0:2] - obs[0:2]) >= obs[2] ** 2)
-
-        X.append(self.opti.variable(4))  
-        T.append(self.opti.variable())
+            self.opti.set_initial(T[k], 10.0)
 
         X = ca.hcat(X)
         T = ca.hcat(T)
 
         self.options = {}
         self.options["structure_detection"] = "auto"
-        self.options["debug"] = True
+        self.options["debug"] = False
 
-        self.opti.minimize(ca.sum2(T))
+        self.opti.minimize(ca.sum2(T)/N)
+        # self.opti.minimize(cost)
         self.opti.solver("fatrop", self.options)
-
-        sol = self.opti.solve()
-        print(sol.value(X).T)
+        try:
+            sol = self.opti.solve()
+        except:
+            sol = self.opti.debug
+            print("failed!!")
+        # print(sol.value(X).T)
+        poses = np.array(sol.value(X))
+        poses_xy = poses[:2]
+        self.positions = poses_xy.T
+        # print(poses)
 
     def plan_to_pose(self, start, goal, dt=0.01, N=1000):
         """
@@ -149,9 +162,9 @@ class OptimizationPlanner(object):
             circle = plt.Circle((xc, yc), r, color='black')
             ax.add_artist(circle)
 
-        if self.plan:
-            plan_x = self.plan.positions[:, 0]
-            plan_y = self.plan.positions[:, 1]
+        if True or self.plan:
+            plan_x = self.positions[:, 0]
+            plan_y = self.positions[:, 1]
             ax.plot(plan_x, plan_y, color='green')
 
         plt.show()
@@ -168,15 +181,16 @@ def main():
     u2_max = 3
     obstacles = [[6, 3.5, 1.5], [3.5, 6.5, 1]]
 
-    config = BicycleConfigurationSpace( xy_low + [-1000, -phi_max],
-                                        xy_high + [1000, phi_max],
+    config = BicycleConfigurationSpace( xy_low + [-np.inf, -phi_max],
+                                        xy_high + [np.inf, phi_max],
                                         [-u1_max, -u2_max],
                                         [u1_max, u2_max],
                                         obstacles,
                                         0.15)
 
     planner = OptimizationPlanner(config)
-    planner.reid_big_function(start, goal, N=1000)
+    planner.reid_big_function(start, goal, N=100)
+    planner.plot_execution()
     #plan = planner.plan_to_pose(start, goal)
     #planner.plot_execution()
 

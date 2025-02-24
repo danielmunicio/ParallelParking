@@ -261,13 +261,6 @@ class BicycleConfigurationSpace(ConfigurationSpace):
         self.input_high_lims = input_high_lims
 
         self.motion_primitives = np.vstack([
-<<<<<<< HEAD
-            [0.2, 0.0], # Straight ahead
-            #[0.2, 0.2], # Left Turn
-            [0.2, 0.1], # Hard Left Turn 
-            #[0.2, -0.2],# Right turn
-            [0.2, -0.1], # Hard right turn
-=======
             [0.1, 0.0], # Straight ahead
             [0.1, 0.2], # Left Turn
             [0.1, 0.5], # Hard Left Turn 
@@ -277,7 +270,6 @@ class BicycleConfigurationSpace(ConfigurationSpace):
             [0.1, 0.3],
             [0.1, 0.35],
             [0.1, 0.4],
->>>>>>> 30fe8c30a790784464776f97eb6d6455bc7ff836
         ])
 
         self.motion_primitives = np.vstack([self.motion_primitives, self.motion_primitives * [2, 1]])
