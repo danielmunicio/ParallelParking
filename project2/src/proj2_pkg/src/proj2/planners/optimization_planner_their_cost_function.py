@@ -72,8 +72,8 @@ class OptimizationPlanner(object):
         X = ca.hcat(X)
 
         self.options = {}
-        self.options["structure_detection"] = "auto"
-        self.options["debug"] = False
+        #self.options["structure_detection"] = "auto"
+        #self.options["debug"] = False
 
         q = self.opti.variable(4, N+1)
         u = self.opti.variable(2, N)
@@ -86,7 +86,7 @@ class OptimizationPlanner(object):
         self.opti.minimize(obj)
 
         # self.opti.minimize(cost)
-        self.opti.solver("fatrop", self.options)
+        self.opti.solver("ipopt", self.options)
         try:
             sol = self.opti.solve()
         except:
