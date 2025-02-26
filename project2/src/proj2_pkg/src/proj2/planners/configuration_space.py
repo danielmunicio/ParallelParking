@@ -271,15 +271,16 @@ class BicycleConfigurationSpace(ConfigurationSpace):
             [0.1, 0.35],
             [0.1, 0.4],
         ])
-
+        self.motion_primitives = self.motion_primitives * 0.5
         self.motion_primitives = np.vstack([self.motion_primitives, self.motion_primitives * [2, 1]])
         self.motion_primitives = np.vstack([self.motion_primitives, self.motion_primitives * [1, 2]])
+        self.motion_primitives = np.vstack([self.motion_primitives, self.motion_primitives * [-1, 1]]) # Feel free to un-remove this. NO BRAKES >:)
         self.motion_primitives = np.vstack([self.motion_primitives, self.motion_primitives * [1, -1]])
     def distance(self, c1, c2):
         """
         c1 and c2 should be numpy.ndarrays of size (4,)
         """
-        return (np.linalg.norm(c1[0:2] - c2[0:2]) + (np.sin((c1[3] - c2[3]) / 2) ** 2))
+        return (np.linalg.norm(c1[0:2] - c2[0:2]) + 7 * (np.sin((c1[2] - c2[2]) / 2) ** 2))
 
     def sample_config(self, *args):
         """
@@ -360,8 +361,6 @@ class BicycleConfigurationSpace(ConfigurationSpace):
         """
 
         u, q = self.check_motion_primitives(dt, c1, c2)
-        print("U: ", u)
-        print("Q: ", q)
         plan = Plan(np.array([0, 0.01]), np.array([c1, q]), np.tile(u, (2, 1)), dt=dt)
         return plan
 

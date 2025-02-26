@@ -189,7 +189,7 @@ def main():
                                         0.15)
 
     planner = OptimizationPlanner(config)
-    planner.reid_big_function(start, goal, N=100)
+    planner.reid_big_function(start, goal, N=200)
     planner.plot_execution()
     #plan = planner.plan_to_pose(start, goal)
     #planner.plot_execution()

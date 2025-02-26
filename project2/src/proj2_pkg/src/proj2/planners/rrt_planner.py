@@ -139,7 +139,7 @@ def main():
     # config = FreeEuclideanSpace(dim, xy_low + [-1000, -phi_max],
     #                                     xy_high + [1000, phi_max])
 
-    planner = RRTPlanner(config, max_iter=2000, expand_dist=0.8)
+    planner = RRTPlanner(config, max_iter=5000, expand_dist=0.8)
     plan = planner.plan_to_pose(start, goal)
     planner.plot_execution()
 
