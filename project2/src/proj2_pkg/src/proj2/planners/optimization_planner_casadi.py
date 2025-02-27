@@ -290,3 +290,24 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+    ###### SETUP PROBLEM ######
+    
+    q_lb = xy_low + [-1000, -phi_max]
+    q_ub = xy_high + [1000, phi_max]
+
+    u_lb = [-u1_max, -u2_max]
+    u_ub = [u1_max, u2_max]
+
+    ###### CONSTRUCT SOLVER AND SOLVE ######
+
+    plan, inputs = plan_to_pose(q_start, q_goal, q_lb, q_ub, u_lb, u_ub, obs_list, L=L, n=n, dt=dt)
+
+    ###### PLOT ######
+
+    times = np.arange(0.0, (n + 1) * dt, dt)
+    print("Final Position:", plan[:4, -1])
+    plot(plan, inputs, times, q_lb, q_ub, obs_list)
+
+if __name__ == '__main__':
+    main()

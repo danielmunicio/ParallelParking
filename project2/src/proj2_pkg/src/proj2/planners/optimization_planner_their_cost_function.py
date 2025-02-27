@@ -197,7 +197,7 @@ def main():
     u1_max = 2
     u2_max = 3
     obstacles = [[6, 3.5, 1.5], [3.5, 6.5, 1]]
-    #obstacles = [[4.5, 4.5, 2]]
+    #obstacles = [[4.5, 4.5, 4.3]]
     config = BicycleConfigurationSpace( xy_low + [-np.inf, -phi_max],
                                         xy_high + [np.inf, phi_max],
                                         [-u1_max, -u2_max],
@@ -206,7 +206,7 @@ def main():
                                         0.15)
 
     planner = OptimizationPlanner(config)
-    planner.reid_big_function(start, goal, N=50, dt = 0.1)
+    planner.reid_big_function(start, goal, N=80, dt = 0.1)
     planner.plot_execution()
     #plan = planner.plan_to_pose(start, goal)
     #planner.plot_execution()

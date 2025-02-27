@@ -14,7 +14,7 @@ import casadi as ca
 from configuration_space import BicycleConfigurationSpace, Plan, expanded_obstacles
 #from self.optimization_planner_casadi import plan_to_pose
 
-class OptimizationPlanner(object):
+class OptimizationPlannerTime(object):
     def __init__(self, config_space):
         self.config_space = config_space
 
@@ -188,8 +188,8 @@ def main():
                                         obstacles,
                                         0.15)
 
-    planner = OptimizationPlanner(config)
-    planner.reid_big_function(start, goal, N=200)
+    planner = OptimizationPlannerTime(config)
+    planner.reid_big_function(start, goal, N=100)
     planner.plot_execution()
     #plan = planner.plan_to_pose(start, goal)
     #planner.plot_execution()

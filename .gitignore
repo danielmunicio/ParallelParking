@@ -1,1 +1,3 @@
 proj1_pkg
+*.casadi
+*.pyc
