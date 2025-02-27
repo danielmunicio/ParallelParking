@@ -21,7 +21,7 @@ class BicycleModelController(object):
         """
         self.pub = rospy.Publisher('/bicycle/cmd_vel', BicycleCommandMsg, queue_size=10)
         self.sub = rospy.Subscriber('/bicycle/state', BicycleStateMsg, self.subscribe)
-        self.state = BicycleStateMsg()
+        self.state = np.array([])
         rospy.on_shutdown(self.shutdown)
 
     def execute_plan(self, plan):
@@ -47,8 +47,6 @@ class BicycleModelController(object):
 
     def step_control(self, target_position, open_loop_input):
         """Specify a control law. For the grad/EC portion, you may want
-        to edit this part to write your own closed loop controller.
-        Note that this class constantly subscribes to the state of the robot,
         so the current configuratin of the robot is always stored in the 
         variable self.state. You can use this as your state measurement
         when writing your closed loop controller.
@@ -62,6 +60,8 @@ class BicycleModelController(object):
         Returns:
             None. It simply sends the computed command to the robot.
         """
+        error = target_position - self.state
+        
         self.cmd(open_loop_input)
 
 
