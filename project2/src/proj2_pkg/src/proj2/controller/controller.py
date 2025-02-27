@@ -13,6 +13,7 @@ from std_srvs.srv import Empty as EmptySrv
 import rospy
 from proj2_pkg.msg import BicycleCommandMsg, BicycleStateMsg
 from proj2.planners import SinusoidPlanner, RRTPlanner, BicycleConfigurationSpace
+from proj2.controller.mpc_controller import MPCPathFollower
 
 class BicycleModelController(object):
     def __init__(self):
@@ -22,6 +23,27 @@ class BicycleModelController(object):
         self.pub = rospy.Publisher('/bicycle/cmd_vel', BicycleCommandMsg, queue_size=10)
         self.sub = rospy.Subscriber('/bicycle/state', BicycleStateMsg, self.subscribe)
         self.state = BicycleStateMsg()
+        self.mpc = MPCPathFollower(
+            N=10, 
+            DT=0.05, 
+            L_F=...,
+            L_R=...,
+            V_MIN=..., # min steering angle
+            V_MAX=..., # max steering angle
+            A_MIN=..., # min fwd vel
+            A_MAX=..., # max fwd vel
+            A_DOT_MIN=..., # min fwd accel
+            A_DOT_MAX=..., # max fwd acc
+            DF_MIN=..., # min steering vel
+            DF_MAX=..., # max steering vel
+            DF_DOT_MIN=..., # min steering acceleration
+            DF_DOT_MAX=..., # max steering acceleration
+            Q=..., # weight cost matrix
+            R=..., # input cost matrix
+            RUNTIME_FREQUENCY=..., # runtime frequency (hz)
+            ivpsolver=dict(n=3, method='rk4'),
+            nlpsolver=dict(opts={'structure_detection': 'auto', 'expand': False, 'debug': False, 'fatrop.print_level': -1, 'print_time': False}, name='fatrop')
+        )
         rospy.on_shutdown(self.shutdown)
 
     def execute_plan(self, plan):
@@ -36,6 +58,7 @@ class BicycleModelController(object):
             return
         rate = rospy.Rate(int(1 / plan.dt))
         start_t = rospy.Time.now()
+        self.plan = plan
         while not rospy.is_shutdown():
             t = (rospy.Time.now() - start_t).to_sec()
             if t > plan.times[-1]:
@@ -62,6 +85,17 @@ class BicycleModelController(object):
         Returns:
             None. It simply sends the computed command to the robot.
         """
+        
+        targets = zip(*[self.plan.get(i*self.MPC.DT) for i in range(self.mpc.N)])
+        x_traj = np.array(targets[0])
+        u_traj = np.array(targets[0])
+        print(x_traj.shape)
+        print(u_traj.shape)
+        # x_traj = self.path[xidxs, 0:4]
+        # u_traj = self.path[uidxs, 4:6]
+        trajectory = np.hstack([x_traj, u_traj]).T
+        if 'prev_soln' not in self.__dict__: self.prev_soln = np.array([0.0, 0.0])
+        self.prev_soln = self.mpc.solve(self.state, self.prev_soln, trajectory).flatten()
         self.cmd(open_loop_input)
 
 
