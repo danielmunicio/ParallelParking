@@ -23,23 +23,35 @@ class BicycleModelController(object):
         self.pub = rospy.Publisher('/bicycle/cmd_vel', BicycleCommandMsg, queue_size=10)
         self.sub = rospy.Subscriber('/bicycle/state', BicycleStateMsg, self.subscribe)
         self.state = BicycleStateMsg()
+        if not rospy.has_param("/bicycle_converter/converter/length"):
+            raise ValueError("Converter length not found on parameter server")    
+        L = rospy.get_param("/bicycle_converter/converter/length")
+        if not rospy.has_param("/bicycle_converter/converter/max_steering_rate"):
+            raise ValueError("Max Steering Rate not found on parameter server")
+        DF_MAX = rospy.get_param("/bicycle_converter/converter/max_steering_rate")
+        if not rospy.has_param("/bicycle_converter/converter/max_linear_velocity"):
+            raise ValueError("Max Linear Velocity not found on parameter server")
+        V_MAX = rospy.get_param("/bicycle_converter/converter/max_linear_velocity")
+        if not rospy.has_param("/bicycle_converter/converter/max_steering_angle"):
+            raise ValueError("No robot information loaded on parameter server. Did you run init_env.launch?")
+        PHI_MAX = rospy.get_param("/bicycle_converter/converter/max_steering_angle")
         self.mpc = MPCPathFollower(
             N=10, 
             DT=0.05, 
-            L_F=...,
-            L_R=...,
-            V_MIN=..., # min steering angle
-            V_MAX=..., # max steering angle
-            A_MIN=..., # min fwd vel
-            A_MAX=..., # max fwd vel
-            A_DOT_MIN=..., # min fwd accel
-            A_DOT_MAX=..., # max fwd acc
-            DF_MIN=..., # min steering vel
-            DF_MAX=..., # max steering vel
-            DF_DOT_MIN=..., # min steering acceleration
-            DF_DOT_MAX=..., # max steering acceleration
-            Q=..., # weight cost matrix
-            R=..., # input cost matrix
+            L_F=L/2,
+            L_R=L/2,
+            V_MIN=-PHI_MAX, # min steering angle
+            V_MAX=PHI_MAX, # max steering angle
+            A_MIN=-V_MAX, # min fwd vel
+            A_MAX=V_MAX, # max fwd vel
+            A_DOT_MIN=-np.inf, # min fwd accel
+            A_DOT_MAX=np.inf, # max fwd acc
+            DF_MIN=-DF_MAX, # min steering vel
+            DF_MAX=DF_MAX, # max steering vel
+            DF_DOT_MIN=-np.inf, # min steering acceleration
+            DF_DOT_MAX=np.inf, # max steering acceleration
+            Q=np.diag([10, 10, 1, 0.1]), # weight cost matrix
+            R=np.diag([1, 1]), # input cost matrix
             RUNTIME_FREQUENCY=..., # runtime frequency (hz)
             ivpsolver=dict(n=3, method='rk4'),
             nlpsolver=dict(opts={'structure_detection': 'auto', 'expand': False, 'debug': False, 'fatrop.print_level': -1, 'print_time': False}, name='fatrop')
