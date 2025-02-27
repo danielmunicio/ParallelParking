@@ -257,7 +257,7 @@ class MPCPathFollower:
         x1 = ca.vertcat(
             ca.cos(self.q[2]) * self.u[0], 
             ca.sin(self.q[2]) * self.u[0],
-            (1/self.robot_length) * ca.tan(self.q[3]) * self.u[0],
+            (1/(self.L_F+self.L_R)) * ca.tan(self.q[3]) * self.u[0],
             self.u[1]
         )
 
