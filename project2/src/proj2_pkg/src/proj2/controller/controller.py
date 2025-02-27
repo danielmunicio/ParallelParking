@@ -36,7 +36,7 @@ class BicycleModelController(object):
             raise ValueError("No robot information loaded on parameter server. Did you run init_env.launch?")
         PHI_MAX = rospy.get_param("/bicycle_converter/converter/max_steering_angle")
         self.mpc = MPCPathFollower(
-            N=10, 
+            N=20, 
             DT=0.05, 
             L_F=L/2,
             L_R=L/2,
@@ -50,9 +50,9 @@ class BicycleModelController(object):
             DF_MAX=DF_MAX, # max steering vel
             DF_DOT_MIN=-np.inf, # min steering acceleration
             DF_DOT_MAX=np.inf, # max steering acceleration
-            Q=np.diag([10, 10, 1, 0.1]), # weight cost matrix
-            R=np.diag([1, 1]), # input cost matrix
-            RUNTIME_FREQUENCY=..., # runtime frequency (hz)
+            Q=[10, 10, 0, 0], # weight cost matrix
+            R=[0, 0], # input cost matrix
+            RUNTIME_FREQUENCY=20, # runtime frequency (hz)
             ivpsolver=dict(n=3, method='rk4'),
             nlpsolver=dict(opts={'structure_detection': 'auto', 'expand': False, 'debug': False, 'fatrop.print_level': -1, 'print_time': False}, name='fatrop')
         )
@@ -70,6 +70,7 @@ class BicycleModelController(object):
             return
         rate = rospy.Rate(int(1 / plan.dt))
         start_t = rospy.Time.now()
+        self.start_t = start_t
         self.plan = plan
         while not rospy.is_shutdown():
             t = (rospy.Time.now() - start_t).to_sec()
@@ -97,18 +98,23 @@ class BicycleModelController(object):
         Returns:
             None. It simply sends the computed command to the robot.
         """
-        
-        targets = zip(*[self.plan.get(i*self.MPC.DT) for i in range(self.mpc.N)])
+        t0 = rospy.Time.now().to_sec() - self.start_t.to_sec()
+        targets = list(zip(*[self.plan.get(t0 + i*self.mpc.DT) for i in range(self.mpc.N)]))
         x_traj = np.array(targets[0])
-        u_traj = np.array(targets[0])
-        print(x_traj.shape)
-        print(u_traj.shape)
+        u_traj = np.array(targets[1])
+        print(x_traj, u_traj)
+        # print(x_traj.shape)
+        # print(u_traj.shape)
         # x_traj = self.path[xidxs, 0:4]
         # u_traj = self.path[uidxs, 4:6]
         trajectory = np.hstack([x_traj, u_traj]).T
         if 'prev_soln' not in self.__dict__: self.prev_soln = np.array([0.0, 0.0])
         self.prev_soln = self.mpc.solve(self.state, self.prev_soln, trajectory).flatten()
-        self.cmd(open_loop_input)
+        self.cmd(self.prev_soln)
+        print(self.prev_soln)
+        print(self.state)
+        print(target_position, open_loop_input)
+        print()
 
 
     def cmd(self, msg):

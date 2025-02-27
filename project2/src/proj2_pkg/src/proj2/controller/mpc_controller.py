@@ -98,12 +98,12 @@ class MPCPathFollower:
         # assert 3.9<np.linalg.matrix_rank(ct.ctrb(A, B))<4.1 # it's an integer (mathematically at least)
         
         # then solve the CARE to get a lyapunov terminal cost
-        self.default_P = sp.linalg.solve_continuous_are(
-            a = A, 
-            b = B, 
-            q = self.Q, 
-            r = self.R,
-        )/self.DT
+        # self.default_P = sp.linalg.solve_continuous_are(
+        #     a = A, 
+        #     b = B, 
+        #     q = self.Q, 
+        #     r = self.R,
+        # )/self.DT
         self.default_P = self.Q
         # formulate dynamics constraint using map, which helps the expression graph be more compact        
         dynamics_constr = self.x[:, 1:] - self.F.map(self.N)(self.x[:, :-1], self.u[:, :-1])
@@ -255,10 +255,10 @@ class MPCPathFollower:
 
         # calculate dx/dt
         x1 = ca.vertcat(
-            ca.cos(self.q[2]) * self.u[0], 
-            ca.sin(self.q[2]) * self.u[0],
-            (1/(self.L_F+self.L_R)) * ca.tan(self.q[3]) * self.u[0],
-            self.u[1]
+            ca.cos(x0[2]) * u0[0], 
+            ca.sin(x0[2]) * u0[0],
+            (1/(self.L_F+self.L_R)) * ca.tan(x0[3]) * x0[0],
+            u0[1]
         )
 
         f = ca.Function('f', [x0, u0], [x1])

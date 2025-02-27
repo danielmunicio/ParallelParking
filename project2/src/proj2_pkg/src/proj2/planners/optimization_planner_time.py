@@ -11,7 +11,7 @@ import scipy.io as spio
 import numpy as np
 import matplotlib.pyplot as plt
 import casadi as ca
-from configuration_space import BicycleConfigurationSpace, Plan, expanded_obstacles
+from .configuration_space import BicycleConfigurationSpace, Plan, expanded_obstacles
 #from self.optimization_planner_casadi import plan_to_pose
 
 class OptimizationPlannerTime(object):
@@ -37,7 +37,7 @@ class OptimizationPlannerTime(object):
     
         self.thefunkymonkey = ca.Function('thefunkymonkey', [self.q, self.u, self.t], [self.dynamics])
 
-    def reid_big_function(self, start, goal, N):
+    def reid_big_function(self, start, goal, dt=0.01, N=1000):
         fix_angle = ca.Function('fix_angle', [self.q], [ca.vertcat(self.q[0], self.q[1], ca.sin(self.q[2]/2), self.q[3])])
 
         X = []
@@ -77,6 +77,7 @@ class OptimizationPlannerTime(object):
 
         X = ca.hcat(X)
         T = ca.hcat(T)
+        U = ca.hcat(U)
 
         self.options = {}
         self.options["structure_detection"] = "auto"
@@ -95,8 +96,10 @@ class OptimizationPlannerTime(object):
         poses_xy = poses[:2]
         self.positions = poses_xy.T
         # print(poses)
+        return Plan(np.linspace(0, sol.value(T)[0], N), poses.T, np.array(sol.value(U)).T)
 
     def plan_to_pose(self, start, goal, dt=0.01, N=1000):
+        return self.reid_big_function(start, goal, dt, N)
         """
             Uses your self.optimization based path planning algorithm to plan from the 
             start configuration to the goal configuration.
