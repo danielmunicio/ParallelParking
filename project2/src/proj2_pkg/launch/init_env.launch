@@ -48,7 +48,9 @@
 
     <!-- Frames -->
     <arg name="fixed_frame" default="fake_odom" />
+    <!-- <arg name="fixed_frame" default="odom" /> -->
     <arg name="robot_frame" default="base_link" />
+    <!-- <arg name="robot_frame" default="base_footprint" /> -->
 
     <!-- Length of imaginary car. -->
     <arg name="length" default="0.3" />
