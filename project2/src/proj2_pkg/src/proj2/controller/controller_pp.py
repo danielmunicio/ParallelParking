@@ -57,6 +57,12 @@ class BicycleModelController(object):
             nlpsolver=dict(opts={'structure_detection': 'auto', 'expand': False, 'debug': False, 'fatrop.print_level': -1, 'print_time': False}, name='fatrop')
         )
         rospy.on_shutdown(self.shutdown)
+<<<<<<< HEAD
+=======
+        self.last_state = None
+        self.last_steering_angle = None
+        self.lookahead = 0.3
+>>>>>>> 3d04efa (Stuff isn't working >:()
 
     def execute_plan(self, plan):
         """
@@ -99,6 +105,7 @@ class BicycleModelController(object):
             None. It simply sends the computed command to the robot.
         """
         t0 = rospy.Time.now().to_sec() - self.start_t.to_sec()
+<<<<<<< HEAD
         targets = list(zip(*[self.plan.get(t0 + i*self.mpc.DT) for i in range(self.mpc.N)]))
         x_traj = np.array(targets[0])
         u_traj = np.array(targets[1])
@@ -115,7 +122,42 @@ class BicycleModelController(object):
         print(self.state)
         print(target_position, open_loop_input)
         print()
-
+=======
+        dt = t0 - self.last_t
+        error = target_position - self.state
+        error_dist = np.linalg.norm(error[:2])
+        
+        p = 0.2 * error_dist
+        
+        dx, dy = target_position[0] - self.state[0], target_position[1] - self.state[1]
+        L = np.hypot(dx, dy)
+        alpha = np.arctan2(dy, dx) - self.state[2]
+        
+        steering_angle = np.arctan2(2 * L * np.sin(alpha), self.lookahead)
+        
+        if self.last_steering_angle is not None:
+            steering_velocity = (steering_angle - self.last_steering_angle) / dt
+        else:
+            steering_velocity = 0
+        
+        print(f"Target Position: {target_position}")
+        print(f"Current State: {self.state}")
+        print(f"Distance to Target (L): {L}")
+        print(f"Angle Error (alpha): {alpha}")
+        print(f"Steering Angle: {steering_angle}")
+        print(f"Steering Velocity: {steering_velocity}")
+        print(f"Velocity (p): {p}")
+        
+        control_out = [open_loop_input[0], open_loop_input[1]]
+        
+        # Send command
+        self.cmd(control_out)
+        
+        # Update last state and time
+        self.last_t = t0
+        self.last_state = self.state.copy()
+        self.last_steering_angle = steering_angle
+>>>>>>> 3d04efa (Stuff isn't working >:()
 
     def cmd(self, msg):
         """

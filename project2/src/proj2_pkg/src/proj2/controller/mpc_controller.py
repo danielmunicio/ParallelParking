@@ -159,17 +159,17 @@ class MPCPathFollower:
                 # control cost
                 cost += ca.bilin(self.R, self.u[:, stage] - self.ubar[:, stage])
             if stage<self.N-1:
-                segment = dx[stage]/ca.norm_2(dx[stage])
-                a, c, b, d = segment[0], segment[1], -segment[1], segment[0]
-                # [x -y] [a b]
-                # [y  x] [c d]
-                mat = ca.blockcat([[a, b, 0, 0],
-                                   [c, d, 0, 0],
-                                   [0, 0, 1, 0],
-                                   [0, 0, 0, 1]]).T # Transpose = inverse since orthonormal
+                # segment = dx[stage]/ca.norm_2(dx[stage])
+                # a, c, b, d = segment[0], segment[1], -segment[1], segment[0]
+                # # [x -y] [a b]
+                # # [y  x] [c d]
+                # mat = ca.blockcat([[a, b, 0, 0],
+                #                    [c, d, 0, 0],
+                #                    [0, 0, 1, 0],
+                #                    [0, 0, 0, 1]]).T # Transpose = inverse since orthonormal
 
                 # state cost
-                cost += ca.bilin(self.Q, mat@(self.fix_angle(self.x[0:4, stage+1] - self.xbar[:, stage]).T))
+                cost += ca.bilin(self.Q, (self.fix_angle(self.x[0:4, stage+1] - self.xbar[:, stage]).T))
 
         # terminal state cost
         cost += ca.bilin(self.P, self.fix_angle(self.x[0:4, self.N]-self.xbar[:, self.N-1]))

@@ -73,7 +73,7 @@ class OptimizationPlannerTime(object):
             
             for obs in self.config_space.obstacles:
                 self.opti.subject_to(ca.sumsqr(X[k][0:2] - obs[0:2]) >= obs[2] ** 2)
-            self.opti.set_initial(T[k], 10.0)
+            self.opti.set_initial(T[k], 30.0)
 
         X = ca.hcat(X)
         T = ca.hcat(T)
