@@ -56,7 +56,8 @@ class BicycleModelController(object):
             ivpsolver=dict(n=3, method='rk4'),
             nlpsolver=dict(opts={'structure_detection': 'auto', 'expand': False, 'debug': False, 'fatrop.print_level': -1, 'print_time': False}, name='fatrop')
         )
-        rospy.on_shutdown(self.shutdown)
+        self.state = np.array([])
+
 
     def execute_plan(self, plan):
         """
@@ -86,8 +87,6 @@ class BicycleModelController(object):
 
     def step_control(self, target_position, open_loop_input):
         """Specify a control law. For the grad/EC portion, you may want
-        to edit this part to write your own closed loop controller.
-        Note that this class constantly subscribes to the state of the robot,
         so the current configuratin of the robot is always stored in the 
         variable self.state. You can use this as your state measurement
         when writing your closed loop controller.
@@ -121,6 +120,9 @@ class BicycleModelController(object):
         # print(self.state)
         # print(target_position, open_loop_input)
         # print()
+        error = target_position - self.state
+        
+        self.cmd(open_loop_input)
 
 
     def cmd(self, msg):
