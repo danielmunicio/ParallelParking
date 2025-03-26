@@ -18,6 +18,6 @@ I attatched the paper I wrote for my robotics class [here](visuals/106B_Project_
 ![RRT Parallel Park](visuals/rrt_pp.png)
 
 ### Sinusoid Parallel Park
-![Sinusoid Parallel Park](visuals/sin_pp.png106B_Project_2__Planning_with_Sinusoids-1.pdf)
+![Sinusoid Parallel Park](visuals/sin_pp.png)
 
 
