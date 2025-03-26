@@ -13,6 +13,7 @@ from std_srvs.srv import Empty as EmptySrv, EmptyResponse
 from std_msgs.msg import Empty as EmptyMsg
 from std_msgs.msg import Header
 from nav_msgs.msg import Odometry
+import yaml
 
 class BicycleConverter():
     """docstring for BicycleConverter"""
@@ -87,6 +88,7 @@ class BicycleConverter():
 
             # resetting stuff
             self.reset_odom = rospy.Publisher('/mobile_base/commands/reset_odometry', EmptyMsg, queue_size=10)
+            rospy.sleep(1.0)
         self.command_publisher = rospy.Publisher(self.unicycle_command_topic, Twist, queue_size = 1)
         self.state_publisher = rospy.Publisher(self.state_topic, BicycleStateMsg, queue_size = 1)
         self.subscriber = rospy.Subscriber(self.bicycle_command_topic, BicycleCommandMsg, self.command_listener)
@@ -114,8 +116,10 @@ class BicycleConverter():
             if not self.sim:
                 for i in range(100):
                     try:
+                        frames_dict = yaml.safe_load(self.tf_buffer.all_frames_as_yaml())
+                        #print(list(frames_dict.keys()))
                         pose = self.tf_buffer.lookup_transform(
-                            self.fixed_frame, self.robot_frame, rospy.Time())
+                            "odom", "base_footprint", rospy.Time())
                         break
                     except (tf2_ros.LookupException,
                             tf2_ros.ConnectivityException,
@@ -160,8 +164,8 @@ class BicycleConverter():
         return EmptyResponse()
 
     def shutdown(self):
-    	rospy.loginfo("Shutting Down")
-    	self.command_publisher.publish(Twist()) # Stop moving
+        rospy.loginfo("Shutting Down")
+        self.command_publisher.publish(Twist()) # Stop moving
 
 if __name__ == '__main__':
     rospy.init_node("Bicycle Conversion", anonymous=True)

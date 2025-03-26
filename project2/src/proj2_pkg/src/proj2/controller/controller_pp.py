@@ -42,22 +42,27 @@ class BicycleModelController(object):
             L_R=L/2,
             V_MIN=-PHI_MAX, # min steering angle
             V_MAX=PHI_MAX, # max steering angle
-            A_MIN=-V_MAX*1.5, # min fwd vel
-            A_MAX=V_MAX*1.5, # max fwd vel
+            A_MIN=-V_MAX, # min fwd vel
+            A_MAX=V_MAX, # max fwd vel
             A_DOT_MIN=-np.inf, # min fwd accel
             A_DOT_MAX=np.inf, # max fwd acc
-            DF_MIN=-DF_MAX*1.5, # min steering vel
-            DF_MAX=DF_MAX*1.5, # max steering vel
+            DF_MIN=-DF_MAX, # min steering vel
+            DF_MAX=DF_MAX, # max steering vel
             DF_DOT_MIN=-np.inf, # min steering acceleration
             DF_DOT_MAX=np.inf, # max steering acceleration
-            Q=[10, 10, 1e3, 1e2], # weight cost matrix
-            R=[10, 0], # input cost matrix
+            Q=[10, 10, 0, 0], # weight cost matrix
+            R=[0, 0], # input cost matrix
             RUNTIME_FREQUENCY=20, # runtime frequency (hz)
             ivpsolver=dict(n=3, method='rk4'),
             nlpsolver=dict(opts={'structure_detection': 'auto', 'expand': False, 'debug': False, 'fatrop.print_level': -1, 'print_time': False}, name='fatrop')
         )
-        self.state = np.array([])
-
+        rospy.on_shutdown(self.shutdown)
+<<<<<<< HEAD
+=======
+        self.last_state = None
+        self.last_steering_angle = None
+        self.lookahead = 0.3
+>>>>>>> 3d04efa (Stuff isn't working >:()
 
     def execute_plan(self, plan):
         """
@@ -75,18 +80,17 @@ class BicycleModelController(object):
         self.plan = plan
         while not rospy.is_shutdown():
             t = (rospy.Time.now() - start_t).to_sec()
-            if t > plan.times[-1]+2:
-                break
             if t > plan.times[-1]:
-                state, cmd = plan.get(plan.times[-1])
-            else:
-                state, cmd = plan.get(t)
+                break
+            state, cmd = plan.get(t)
             self.step_control(state, cmd)
             rate.sleep()
         self.cmd([0, 0])
 
     def step_control(self, target_position, open_loop_input):
         """Specify a control law. For the grad/EC portion, you may want
+        to edit this part to write your own closed loop controller.
+        Note that this class constantly subscribes to the state of the robot,
         so the current configuratin of the robot is always stored in the 
         variable self.state. You can use this as your state measurement
         when writing your closed loop controller.
@@ -101,29 +105,59 @@ class BicycleModelController(object):
             None. It simply sends the computed command to the robot.
         """
         t0 = rospy.Time.now().to_sec() - self.start_t.to_sec()
+<<<<<<< HEAD
         targets = list(zip(*[self.plan.get(t0 + i*self.mpc.DT) for i in range(self.mpc.N)]))
         x_traj = np.array(targets[0])
         u_traj = np.array(targets[1])
-        # print(x_traj)
-        # print(x_traj, u_traj)
+        print(x_traj, u_traj)
         # print(x_traj.shape)
         # print(u_traj.shape)
         # x_traj = self.path[xidxs, 0:4]
         # u_traj = self.path[uidxs, 4:6]
         trajectory = np.hstack([x_traj, u_traj]).T
         if 'prev_soln' not in self.__dict__: self.prev_soln = np.array([0.0, 0.0])
-        # print(self.prev_soln)
-        # print(self.state)
         self.prev_soln = self.mpc.solve(self.state, self.prev_soln, trajectory).flatten()
         self.cmd(self.prev_soln)
-        # print(self.prev_soln)
-        # print(self.state)
-        # print(target_position, open_loop_input)
-        # print()
+        print(self.prev_soln)
+        print(self.state)
+        print(target_position, open_loop_input)
+        print()
+=======
+        dt = t0 - self.last_t
         error = target_position - self.state
+        error_dist = np.linalg.norm(error[:2])
         
-        self.cmd(open_loop_input)
-
+        p = 0.2 * error_dist
+        
+        dx, dy = target_position[0] - self.state[0], target_position[1] - self.state[1]
+        L = np.hypot(dx, dy)
+        alpha = np.arctan2(dy, dx) - self.state[2]
+        
+        steering_angle = np.arctan2(2 * L * np.sin(alpha), self.lookahead)
+        
+        if self.last_steering_angle is not None:
+            steering_velocity = (steering_angle - self.last_steering_angle) / dt
+        else:
+            steering_velocity = 0
+        
+        print(f"Target Position: {target_position}")
+        print(f"Current State: {self.state}")
+        print(f"Distance to Target (L): {L}")
+        print(f"Angle Error (alpha): {alpha}")
+        print(f"Steering Angle: {steering_angle}")
+        print(f"Steering Velocity: {steering_velocity}")
+        print(f"Velocity (p): {p}")
+        
+        control_out = [open_loop_input[0], open_loop_input[1]]
+        
+        # Send command
+        self.cmd(control_out)
+        
+        # Update last state and time
+        self.last_t = t0
+        self.last_state = self.state.copy()
+        self.last_steering_angle = steering_angle
+>>>>>>> 3d04efa (Stuff isn't working >:()
 
     def cmd(self, msg):
         """
@@ -143,7 +177,7 @@ class BicycleModelController(object):
         ----------
         msg : :obj:`BicycleStateMsg`
         """
-        self.state = np.array([msg.x+1, msg.y+1, msg.theta, msg.phi])
+        self.state = np.array([msg.x, msg.y, msg.theta, msg.phi])
 
     def shutdown(self):
         rospy.loginfo("Shutting Down")

@@ -1,4 +1,5 @@
 from .sinusoid_planner import SinusoidPlanner
 from .rrt_planner import RRTPlanner
 from .optimization_planner_their_cost_function import OptimizationPlanner
+from .optimization_planner_time import OptimizationPlannerTime
 from .configuration_space import BicycleConfigurationSpace

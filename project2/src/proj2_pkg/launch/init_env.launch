@@ -48,15 +48,17 @@
 
     <!-- Frames -->
     <arg name="fixed_frame" default="fake_odom" />
+    <!-- <arg name="fixed_frame" default="odom" /> -->
     <arg name="robot_frame" default="base_link" />
+    <!-- <arg name="robot_frame" default="base_footprint" /> -->
 
     <!-- Length of imaginary car. -->
     <arg name="length" default="0.3" />
 
     <!-- Max Values -->
-    <arg name="max_steering_rate" default="3" />
+    <arg name="max_steering_rate" default="0.7" />
     <arg name="max_steering_angle" default="0.6" />
-    <arg name="max_linear_velocity" default="2" />
+    <arg name="max_linear_velocity" default="0.15" />
 
   <!-- Bicycle Converter node. -->
   <node name="bicycle_converter"

@@ -11,7 +11,7 @@ import scipy.io as spio
 import numpy as np
 import matplotlib.pyplot as plt
 import casadi as ca
-from configuration_space import BicycleConfigurationSpace, Plan, expanded_obstacles
+from .configuration_space import BicycleConfigurationSpace, Plan, expanded_obstacles
 #from self.optimization_planner_casadi import plan_to_pose
 
 class OptimizationPlanner(object):

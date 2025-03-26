@@ -12,7 +12,8 @@ from std_srvs.srv import Empty as EmptySrv
 import rospy
 
 from proj2_pkg.msg import BicycleCommandMsg, BicycleStateMsg
-from proj2.planners import SinusoidPlanner, RRTPlanner, OptimizationPlanner, BicycleConfigurationSpace
+from proj2.planners import SinusoidPlanner, RRTPlanner, OptimizationPlannerTime, BicycleConfigurationSpace
+OptimizationPlanner = OptimizationPlannerTime
 from proj2.controller import BicycleModelController
 
 def parse_args():

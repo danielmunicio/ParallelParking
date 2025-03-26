@@ -1,6 +1,6 @@
-from optimization_planner_their_cost_function import OptimizationPlanner
-from optimization_planner_time import OptimizationPlannerTime
-from configuration_space import BicycleConfigurationSpace, Plan, expanded_obstacles
+from .optimization_planner_their_cost_function import OptimizationPlanner
+from .optimization_planner_time import OptimizationPlannerTime
+from .configuration_space import BicycleConfigurationSpace, Plan, expanded_obstacles
 import time
 import numpy as np 
 
